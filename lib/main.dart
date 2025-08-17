@@ -9,7 +9,7 @@ void main() {
   doWhenWindowReady(() {
     final win = appWindow;
     win.minSize = const Size(500, 400);
-    win.maxSize = const Size(1200, 900);
+    win.maxSize = const Size(1200, 2000);
     win.size = const Size(700, 600);
     win.alignment = Alignment.center;
     win.title = "Curly - HTTP Request Tool";

@@ -6,7 +6,7 @@ class AppTheme {
   static const Color secondaryColor = Color(0xFF607D8B);
   static const Color tertiaryColor = Color(0xFF37474F);
   static const Color backgroundColor = Color(0xFF23272A);
-  static const Color surfaceColor = Color(0xFF263238);
+  static const Color surfaceColor = Color.fromARGB(255, 40, 41, 40);
   static const Color mainColor = Color.fromARGB(255, 233, 196, 30);
 
   static ThemeData get themeData {
@@ -72,7 +72,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         focusedBorder: const OutlineInputBorder(
-          borderSide: BorderSide(color: mainColor, width: 1.0),
+          borderSide: BorderSide(color: Colors.white70, width: 0.5),
           borderRadius: BorderRadius.all(Radius.circular(2)),
         ),
         border: OutlineInputBorder(
