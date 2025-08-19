@@ -20,6 +20,8 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
   );
   String? _lastResponse;
   bool _lastIsError = false;
+  int? _lastStatusCode;
+  String? _lastReasonPhrase;
   final TextEditingController _urlController = TextEditingController();
   final TextEditingController _jsonController = TextEditingController();
 
@@ -151,6 +153,8 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
       setState(() {
         _lastResponse = response;
         _lastIsError = isError;
+        _lastStatusCode = statusCode;
+        _lastReasonPhrase = reasonPhrase;
       });
     }
     if (mounted && context.mounted) {
@@ -270,6 +274,8 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
                           ? () => _showResponseDialog(
                               _lastResponse!,
                               isError: _lastIsError,
+                              statusCode: _lastStatusCode,
+                              reasonPhrase: _lastReasonPhrase,
                             )
                           : null,
                       onClear: _clearFields,
