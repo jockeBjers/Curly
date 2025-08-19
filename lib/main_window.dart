@@ -69,7 +69,7 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
     )
   >
   _sendRequest(String url, String json) async {
-    return _viewModel.sendRequest(
+    return _viewModel.sendRequestWithQueryParams(
       url: url,
       json: json,
       method: _selectedMethod,

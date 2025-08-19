@@ -7,6 +7,41 @@ enum FormValidation { filled, urlEmpty, jsonEmpty, bothEmpty }
 enum HttpMethod { get, post, patch, put, delete }
 
 class MainWindowViewModel {
+  Future<
+    (
+      bool success,
+      String? errorMsg,
+      String? responseBody,
+      int? statusCode,
+      String? reasonPhrase,
+    )
+  >
+  sendRequestWithQueryParams({
+    required String url,
+    required String json,
+    required HttpMethod method,
+  }) async {
+    if (method == HttpMethod.get && json.trim().isNotEmpty) {
+      try {
+        final Map<String, dynamic> params = jsonDecode(json);
+        final queryString = Uri(
+          queryParameters: params.map((k, v) => MapEntry(k, v.toString())),
+        ).query;
+        String finalUrl = url;
+        if (queryString.isNotEmpty) {
+          finalUrl = url.contains('?')
+              ? '$url&$queryString'
+              : '$url?$queryString';
+        }
+        return await sendRequest(url: finalUrl, json: json, method: method);
+      } catch (e) {
+        return (false, "Invalid JSON for query parameters.", null, null, null);
+      }
+    } else {
+      return await sendRequest(url: url, json: json, method: method);
+    }
+  }
+
   final Duration timeout;
 
   MainWindowViewModel({this.timeout = const Duration(seconds: 5)});
