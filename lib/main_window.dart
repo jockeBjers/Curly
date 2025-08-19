@@ -15,7 +15,9 @@ class MainWindow extends StatefulWidget {
 }
 
 class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
-  final MainWindowViewModel _viewModel = MainWindowViewModel();
+  final MainWindowViewModel _viewModel = MainWindowViewModel(
+    timeout: Duration(seconds: 5),
+  );
   String? _lastResponse;
   bool _lastIsError = false;
   final TextEditingController _urlController = TextEditingController();
@@ -28,7 +30,7 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    _loadDebugSampleData();
+    _initialData();
   }
 
   @override
@@ -38,19 +40,20 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void _loadDebugSampleData() {
-    const jsonRaw = {
-      "id": 42,
-      "name": "Name",
+  void _initialData() {
+    const initialJson = {
+      "id": 1,
+      "key": "Value",
       "email": "Name@example.com",
-      "roles": ["admin"],
       "description": "A tool for testing HTTP requests",
     };
-    _jsonController.text = const JsonEncoder.withIndent('  ').convert(jsonRaw);
+    _jsonController.text = const JsonEncoder.withIndent(
+      '  ',
+    ).convert(initialJson);
     _urlController.text = "https://jsonplaceholder.typicode.com/posts";
   }
 
-  FormValidationState _validateInputs(String url, String json) {
+  FormValidation _validateInputs(String url, String json) {
     return _viewModel.validateInputs(url, json, _selectedMethod);
   }
 
@@ -75,52 +78,60 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
     setState(() {
       _isSubmitting = true;
     });
-    final url = _urlController.text;
-    final json = _jsonController.text;
-    final state = _validateInputs(url, json);
-    if (state != FormValidationState.filled) {
-      setState(() {
-        _isSubmitting = false;
-      });
-      String errorMsg;
-      switch (state) {
-        case FormValidationState.urlEmpty:
-          errorMsg = "URL is required.";
-          break;
-        case FormValidationState.jsonEmpty:
-          errorMsg = "JSON body is required for this method.";
-          break;
-        case FormValidationState.bothEmpty:
-          errorMsg = "URL and JSON body are required.";
-          break;
-        default:
-          errorMsg = "Invalid input.";
+
+    try {
+      final url = _urlController.text;
+      final json = _jsonController.text;
+      final state = _validateInputs(url, json);
+      if (state != FormValidation.filled) {
+        String errorMsg;
+        switch (state) {
+          case FormValidation.urlEmpty:
+            errorMsg = "URL is required.";
+            break;
+          case FormValidation.jsonEmpty:
+            errorMsg = "JSON body is required for this method.";
+            break;
+          case FormValidation.bothEmpty:
+            errorMsg = "URL and JSON body are required.";
+            break;
+          default:
+            errorMsg = "Invalid input.";
+        }
+        _showResponseDialog(errorMsg, isError: true);
+        return;
       }
-      _showResponseDialog(errorMsg, isError: true);
-      return;
-    }
-    final (success, errorMsg, responseBody, statusCode, reasonPhrase) =
-        await _sendRequest(url, json);
-    if (responseBody != null && responseBody.isNotEmpty) {
-      String dialogContent = responseBody;
+
+      final (success, errorMsg, responseBody, statusCode, reasonPhrase) =
+          await _sendRequest(url, json);
+
+      if (responseBody != null && responseBody.isNotEmpty) {
+        _showResponseDialog(
+          responseBody,
+          isError: !success,
+          statusCode: statusCode,
+          reasonPhrase: reasonPhrase,
+        );
+      } else {
+        _showResponseDialog(
+          errorMsg ?? "Unknown error",
+          isError: true,
+          statusCode: statusCode,
+          reasonPhrase: reasonPhrase,
+        );
+      }
+    } catch (e) {
       _showResponseDialog(
-        dialogContent,
-        isError: !success,
-        statusCode: statusCode,
-        reasonPhrase: reasonPhrase,
-      );
-    } else {
-      String errorContent = errorMsg ?? "Unknown error";
-      _showResponseDialog(
-        errorContent,
+        "An unexpected error occurred: ${e.toString()}",
         isError: true,
-        statusCode: statusCode,
-        reasonPhrase: reasonPhrase,
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
-    setState(() {
-      _isSubmitting = false;
-    });
   }
 
   void _clearFields() {
@@ -136,10 +147,12 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
     String? reasonPhrase,
   }) {
     // Save last response and error state
-    setState(() {
-      _lastResponse = response;
-      _lastIsError = isError;
-    });
+    if (mounted) {
+      setState(() {
+        _lastResponse = response;
+        _lastIsError = isError;
+      });
+    }
     if (mounted && context.mounted) {
       ResponseDialog.show(
         context,
@@ -160,6 +173,58 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
           _selectedMethod = method;
         });
       },
+    );
+  }
+
+  Widget _buildUrlField() {
+    return TextFormField(
+      controller: _urlController,
+      style: const TextStyle(color: Colors.white),
+      cursorColor: Colors.white,
+      selectionControls: materialTextSelectionControls,
+      decoration: InputDecoration(
+        labelText: 'URL',
+        labelStyle: const TextStyle(color: Colors.white70),
+        hintText: 'https://api.example.com/endpoint',
+        hintStyle: const TextStyle(color: Colors.white38),
+        filled: true,
+        fillColor: Colors.transparent,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(1),
+          borderSide: BorderSide(color: Colors.white30, width: 0.5),
+        ),
+        alignLabelWithHint: true,
+      ),
+      onChanged: (value) {
+        setState(() {});
+      },
+    );
+  }
+
+  Widget _buildJsonField() {
+    return Expanded(
+      child: TextFormField(
+        controller: _jsonController,
+        maxLines: null,
+        expands: true,
+        textAlignVertical: TextAlignVertical.top,
+        style: const TextStyle(color: AppTheme.mainColor, fontSize: 14),
+        cursorColor: Colors.white,
+        selectionControls: materialTextSelectionControls,
+        decoration: InputDecoration(
+          labelText: 'JSON Body',
+          labelStyle: const TextStyle(color: Colors.white70),
+          hintText: '{\n  "key": "value"\n}',
+          hintStyle: const TextStyle(color: Colors.white38),
+          filled: true,
+          fillColor: Colors.transparent,
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(1),
+            borderSide: BorderSide(color: Colors.white30, width: 0.5),
+          ),
+          alignLabelWithHint: true,
+        ),
+      ),
     );
   }
 
@@ -190,64 +255,10 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
                     ),
                     const SizedBox(height: 16),
                     // URL Input
-                    TextFormField(
-                      controller: _urlController,
-                      style: const TextStyle(color: Colors.white),
-                      cursorColor: Colors.white,
-                      selectionControls: materialTextSelectionControls,
-                      decoration: InputDecoration(
-                        labelText: 'URL',
-                        labelStyle: const TextStyle(color: Colors.white70),
-                        hintText: 'https://api.example.com/endpoint',
-                        hintStyle: const TextStyle(color: Colors.white38),
-                        filled: true,
-                        fillColor: Colors.transparent,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(1),
-                          borderSide: BorderSide(
-                            color: Colors.white30,
-                            width: 0.5,
-                          ),
-                        ),
-                        alignLabelWithHint: true,
-                      ),
-                      onChanged: (value) {
-                        setState(() {});
-                      },
-                    ),
+                    _buildUrlField(),
                     const SizedBox(height: 16),
                     // JSON Input
-                    Expanded(
-                      child: TextFormField(
-                        controller: _jsonController,
-                        maxLines: null,
-                        expands: true,
-                        textAlignVertical: TextAlignVertical.top,
-                        style: const TextStyle(
-                          color: AppTheme.mainColor,
-                          fontSize: 14,
-                        ),
-                        cursorColor: Colors.white,
-                        selectionControls: materialTextSelectionControls,
-                        decoration: InputDecoration(
-                          labelText: 'JSON Body',
-                          labelStyle: const TextStyle(color: Colors.white70),
-                          hintText: '{\n  "key": "value"\n}',
-                          hintStyle: const TextStyle(color: Colors.white38),
-                          filled: true,
-                          fillColor: Colors.transparent,
-
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(1),
-                            borderSide: BorderSide(
-                              color: Colors.white30,
-                              width: 0.5,
-                            ),
-                          ),
-                          alignLabelWithHint: true,
-                        ),
-                      ),
-                    ),
+                    _buildJsonField(),
                     const SizedBox(height: 26),
                     // Buttons
                     ActionButtonsRow(
