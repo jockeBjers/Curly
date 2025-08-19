@@ -2,11 +2,15 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 
-enum FormValidationState { filled, urlEmpty, jsonEmpty, bothEmpty }
+enum FormValidation { filled, urlEmpty, jsonEmpty, bothEmpty }
 
 enum HttpMethod { get, post, patch, put, delete }
 
 class MainWindowViewModel {
+  final Duration timeout;
+
+  MainWindowViewModel({this.timeout = const Duration(seconds: 5)});
+
   Future<
     (
       bool success,
@@ -28,29 +32,25 @@ class MainWindowViewModel {
       http.Response response;
       switch (method) {
         case HttpMethod.get:
-          response = await http
-              .get(uri, headers: headers)
-              .timeout(const Duration(seconds: 5));
+          response = await http.get(uri, headers: headers).timeout(timeout);
           break;
         case HttpMethod.post:
           response = await http
               .post(uri, headers: headers, body: json)
-              .timeout(const Duration(seconds: 5));
+              .timeout(timeout);
           break;
         case HttpMethod.patch:
           response = await http
               .patch(uri, headers: headers, body: json)
-              .timeout(const Duration(seconds: 5));
+              .timeout(timeout);
           break;
         case HttpMethod.put:
           response = await http
               .put(uri, headers: headers, body: json)
-              .timeout(const Duration(seconds: 5));
+              .timeout(timeout);
           break;
         case HttpMethod.delete:
-          response = await http
-              .delete(uri, headers: headers)
-              .timeout(const Duration(seconds: 5));
+          response = await http.delete(uri, headers: headers).timeout(timeout);
           break;
       }
       if (response.statusCode == 404) {
@@ -78,7 +78,13 @@ class MainWindowViewModel {
           '  ',
         ).convert(jsonResponse);
       } catch (e) {
-        print("Error decoding JSON response: $e");
+        return (
+          false,
+          "An unexpected error occurred: ${e.toString()}",
+          null,
+          null,
+          null,
+        );
       }
       return (
         true,
@@ -96,20 +102,23 @@ class MainWindowViewModel {
     }
   }
 
-  FormValidationState validateInputs(
-    String url,
-    String json,
-    HttpMethod method,
-  ) {
+  FormValidation validateInputs(String url, String json, HttpMethod method) {
+    bool isValidUrl = false;
     final uri = Uri.tryParse(url);
-    final isUrlEmpty =
-        url.trim().isEmpty || uri == null || !uri.hasAbsolutePath;
-    final isJsonEmpty = json.trim().isEmpty;
-    if (isUrlEmpty && isJsonEmpty) return FormValidationState.bothEmpty;
-    if (isUrlEmpty) return FormValidationState.urlEmpty;
-    if (isJsonEmpty && method != HttpMethod.get) {
-      return FormValidationState.jsonEmpty;
+    if (uri != null) {
+      isValidUrl = uri.hasScheme && uri.hasAuthority;
     }
-    return FormValidationState.filled;
+
+    final isUrlEmpty = url.trim().isEmpty || !isValidUrl;
+    final isJsonEmpty = json.trim().isEmpty;
+
+    if (isUrlEmpty && isJsonEmpty) return FormValidation.bothEmpty;
+    if (isUrlEmpty) return FormValidation.urlEmpty;
+    if (isJsonEmpty &&
+        method != HttpMethod.get &&
+        method != HttpMethod.delete) {
+      return FormValidation.jsonEmpty;
+    }
+    return FormValidation.filled;
   }
 }
