@@ -73,7 +73,7 @@ class ActionButtonsRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           ),
           child: const Text(
-            'Clear',
+            'Reset',
             style: TextStyle(color: AppTheme.mainColor),
           ),
         ),

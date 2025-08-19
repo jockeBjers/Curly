@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
-class ResponseDialog extends StatelessWidget {
+class ResponseDialog extends StatefulWidget {
   final String response;
   final bool isError;
   final int? statusCode;
@@ -36,6 +36,13 @@ class ResponseDialog extends StatelessWidget {
   }
 
   @override
+  State<ResponseDialog> createState() => _ResponseDialogState();
+}
+
+class _ResponseDialogState extends State<ResponseDialog> {
+  bool _copied = false;
+
+  @override
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: Colors.grey[900],
@@ -45,22 +52,22 @@ class ResponseDialog extends StatelessWidget {
           Row(
             children: [
               Text(
-                isError ? 'Error' : 'Response',
+                widget.isError ? 'Error' : 'Response',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: isError ? Colors.red : AppTheme.mainColor,
+                  color: widget.isError ? Colors.red : AppTheme.mainColor,
                   fontFamily: GoogleFonts.pressStart2p().fontFamily,
                   fontSize: 22,
                 ),
               ),
             ],
           ),
-          if (statusCode != null && reasonPhrase != null)
+          if (widget.statusCode != null && widget.reasonPhrase != null)
             Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: Text(
-                '$statusCode $reasonPhrase',
+                '${widget.statusCode} ${widget.reasonPhrase}',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: isError ? Colors.red[300] : Colors.greenAccent,
+                  color: widget.isError ? Colors.red[300] : Colors.greenAccent,
                   fontFamily: GoogleFonts.pressStart2p().fontFamily,
                   fontSize: 14,
                 ),
@@ -74,10 +81,10 @@ class ResponseDialog extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: SingleChildScrollView(
           child: SelectableText(
-            response,
+            widget.response,
             style: TextStyle(
               fontFamily: 'monospace',
-              color: isError ? Colors.red[200] : Colors.white,
+              color: widget.isError ? Colors.red[200] : Colors.white,
               fontSize: 14,
               height: 1.5,
             ),
@@ -87,12 +94,26 @@ class ResponseDialog extends StatelessWidget {
       actions: [
         TextButton(
           style: TextButton.styleFrom(
-            foregroundColor: isError ? Colors.red : AppTheme.mainColor,
+            foregroundColor: widget.isError ? Colors.red : AppTheme.mainColor,
           ),
           onPressed: () {
-            Clipboard.setData(ClipboardData(text: response));
+            Clipboard.setData(ClipboardData(text: widget.response));
+            setState(() {
+              _copied = true;
+            });
+            Future.delayed(const Duration(seconds: 1), () {
+              if (mounted) {
+                setState(() {
+                  _copied = false;
+                });
+              }
+            });
           },
-          child: const Text('Copy'),
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 400),
+            style: TextStyle(color: _copied ? Colors.green : Colors.amber),
+            child: Text(_copied ? 'Copied!' : 'Copy'),
+          ),
         ),
         const SizedBox(width: 10),
         TextButton(
