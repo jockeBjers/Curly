@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
@@ -88,6 +89,14 @@ class ResponseDialog extends StatelessWidget {
           style: TextButton.styleFrom(
             foregroundColor: isError ? Colors.red : AppTheme.mainColor,
           ),
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: response));
+          },
+          child: const Text('Copy'),
+        ),
+        const SizedBox(width: 10),
+        TextButton(
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
           onPressed: () {
             Navigator.of(context).pop();
           },
