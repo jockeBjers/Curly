@@ -7,6 +7,10 @@ enum FormValidation { filled, urlEmpty, jsonEmpty, bothEmpty }
 enum HttpMethod { get, post, patch, put, delete }
 
 class MainWindowViewModel {
+  // Store JWT token temporarily in memory
+  String? _jwtToken;
+
+  String? get jwtToken => _jwtToken;
   Future<
     (
       bool success,
@@ -46,6 +50,34 @@ class MainWindowViewModel {
 
   MainWindowViewModel({this.timeout = const Duration(seconds: 5)});
 
+  // Store token after login
+  void setToken(String token) {
+    _jwtToken = token;
+  }
+
+  // Clear token
+  void clearToken() {
+    _jwtToken = null;
+  }
+
+  // Extract token from login response
+  Future<(bool success, String? errorMsg, String? token)>
+  extractTokenFromResponse(String responseBody) async {
+    try {
+      final responseData = jsonDecode(responseBody);
+      final String? accessToken = responseData['accessToken'];
+
+      if (accessToken != null) {
+        setToken(accessToken);
+        return (true, null, accessToken);
+      } else {
+        return (false, 'No token found in response', null);
+      }
+    } catch (e) {
+      return (false, 'Failed to parse login response: ${e.toString()}', null);
+    }
+  }
+
   Future<
     (
       bool success,
@@ -63,7 +95,15 @@ class MainWindowViewModel {
     const genericError = "Error sending request!";
     try {
       final uri = Uri.parse(url);
-      final headers = {'Content-Type': 'application/json'};
+
+      // Build headers with automatic token injection
+      final headers = <String, String>{'Content-Type': 'application/json'};
+
+      // Add Authorization header if we have a token
+      if (_jwtToken != null && _jwtToken!.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $_jwtToken';
+      }
+
       http.Response response;
       switch (method) {
         case HttpMethod.get:
@@ -112,6 +152,8 @@ class MainWindowViewModel {
         formattedResponse = const JsonEncoder.withIndent(
           '  ',
         ).convert(jsonResponse);
+
+        _tryAutoExtractToken(jsonResponse);
       } catch (e) {
         return (
           false,
@@ -134,6 +176,20 @@ class MainWindowViewModel {
       return (false, genericError, null, null, null);
     } catch (e) {
       return (false, genericError, null, null, null);
+    }
+  }
+
+  void _tryAutoExtractToken(dynamic jsonResponse) {
+    try {
+      if (jsonResponse is Map<String, dynamic>) {
+        final String? accessToken = jsonResponse['accessToken'];
+
+        if (accessToken != null) {
+          setToken(accessToken);
+        }
+      }
+    } catch (e) {
+      // Silently fail - not all responses will have tokens
     }
   }
 
