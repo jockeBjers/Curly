@@ -11,7 +11,7 @@ You can download the latest release
 <br>
 <br>
 <p align="center">
-  <img src="images/screenshot_271.png" alt="Main Window with JSON" />
+  <img src="images/Screenshot_271.png" alt="Main Window with JSON" />
 </p>
 
 
@@ -35,10 +35,10 @@ You can download the latest release
 
 <h2 align="center">201 Response</h2>
 <p align="center">
-  <img src="images/screenshot_272.png" alt="201 Response" />
+  <img src="images/Screenshot_272.png" alt="201 Response" />
 </p>
 
 <h2 align="center">400 Response</h2>
 <p align="center">
-  <img src="images/screenshot_273.png" alt="400 Bad Request" />
+  <img src="images/Screenshot_273.png" alt="400 Bad Request" />
 </p>
