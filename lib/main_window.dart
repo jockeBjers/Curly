@@ -32,7 +32,7 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    _initialData();
+    _loadInitialData();
   }
 
   @override
@@ -42,17 +42,26 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void _initialData() {
-    const initialJson = {
-      "id": 1,
-      "key": "Value",
-      "email": "Name@example.com",
-      "description": "A tool for testing HTTP requests",
-    };
-    _jsonController.text = const JsonEncoder.withIndent(
-      '  ',
-    ).convert(initialJson);
-    _urlController.text = "https://jsonplaceholder.typicode.com/posts";
+  Future<void> _loadInitialData() async {
+    final (savedUrl, savedJson) = await _viewModel.loadData();
+    if (savedUrl != null && savedUrl.isNotEmpty) {
+      _urlController.text = savedUrl;
+    } else {
+      _urlController.text = "https://jsonplaceholder.typicode.com/posts";
+    }
+    if (savedJson != null && savedJson.isNotEmpty) {
+      _jsonController.text = savedJson;
+    } else {
+      const initialJson = {
+        "id": 1,
+        "key": "Value",
+        "email": "Name@example.com",
+        "description": "A tool for testing HTTP requests",
+      };
+      _jsonController.text = const JsonEncoder.withIndent(
+        '  ',
+      ).convert(initialJson);
+    }
   }
 
   FormValidation _validateInputs(String url, String json) {
@@ -139,6 +148,7 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
   void _clearFields() {
     _urlController.clear();
     _jsonController.clear();
+    _viewModel.clearData();
     setState(() {});
   }
 
@@ -198,8 +208,12 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
         ),
         alignLabelWithHint: true,
       ),
-      onChanged: (value) {
+      onChanged: (value) async {
         setState(() {});
+        await _viewModel.saveData(
+          url: _urlController.text,
+          json: _jsonController.text,
+        );
       },
     );
   }
@@ -227,6 +241,12 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
           ),
           alignLabelWithHint: true,
         ),
+        onChanged: (value) async {
+          await _viewModel.saveData(
+            url: _urlController.text,
+            json: _jsonController.text,
+          );
+        },
       ),
     );
   }

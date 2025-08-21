@@ -1,16 +1,15 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum FormValidation { filled, urlEmpty, jsonEmpty, bothEmpty }
 
 enum HttpMethod { get, post, patch, put, delete }
 
 class MainWindowViewModel {
-  // Store JWT token temporarily in memory
   String? _jwtToken;
 
-  String? get jwtToken => _jwtToken;
   Future<
     (
       bool success,
@@ -76,10 +75,10 @@ class MainWindowViewModel {
     try {
       final uri = Uri.parse(url);
 
-      // Build headers with automatic token injection
+      // Build header
       final headers = <String, String>{'Content-Type': 'application/json'};
 
-      // Add Authorization header if we have a token
+      // Add Authorization header if there's a token
       if (_jwtToken != null && _jwtToken!.isNotEmpty) {
         headers['Authorization'] = 'Bearer $_jwtToken';
       }
@@ -173,6 +172,26 @@ class MainWindowViewModel {
     } catch (e) {
       // sadness
     }
+  }
+
+  //local storage
+
+  Future<void> saveData({required String url, required String json}) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString("url", url);
+    await prefs.setString("json", json);
+  }
+
+  Future<(String?, String?)> loadData() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final url = prefs.getString("url") ?? "";
+    final json = prefs.getString("json") ?? "";
+    return (url, json);
+  }
+
+  Future<void> clearData() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
   }
 
   FormValidation validateInputs(String url, String json, HttpMethod method) {
