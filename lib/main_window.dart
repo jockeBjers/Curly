@@ -148,7 +148,6 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
     int? statusCode,
     String? reasonPhrase,
   }) {
-    // Save last response and error state
     if (mounted) {
       setState(() {
         _lastResponse = response;
@@ -258,13 +257,13 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    // URL Input
+
                     _buildUrlField(),
                     const SizedBox(height: 16),
-                    // JSON Input
+
                     _buildJsonField(),
                     const SizedBox(height: 26),
-                    // Buttons
+
                     ActionButtonsRow(
                       isSubmitting: _isSubmitting,
                       selectedMethod: _selectedMethod,

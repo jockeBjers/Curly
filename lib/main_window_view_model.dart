@@ -50,32 +50,12 @@ class MainWindowViewModel {
 
   MainWindowViewModel({this.timeout = const Duration(seconds: 5)});
 
-  // Store token after login
   void setToken(String token) {
     _jwtToken = token;
   }
 
-  // Clear token
   void clearToken() {
     _jwtToken = null;
-  }
-
-  // Extract token from login response
-  Future<(bool success, String? errorMsg, String? token)>
-  extractTokenFromResponse(String responseBody) async {
-    try {
-      final responseData = jsonDecode(responseBody);
-      final String? accessToken = responseData['accessToken'];
-
-      if (accessToken != null) {
-        setToken(accessToken);
-        return (true, null, accessToken);
-      } else {
-        return (false, 'No token found in response', null);
-      }
-    } catch (e) {
-      return (false, 'Failed to parse login response: ${e.toString()}', null);
-    }
   }
 
   Future<
@@ -150,22 +130,21 @@ class MainWindowViewModel {
         );
       }
       String formattedResponse = response.body;
-      try {
-        final dynamic jsonResponse = jsonDecode(response.body);
-        formattedResponse = const JsonEncoder.withIndent(
-          '  ',
-        ).convert(jsonResponse);
-
-        _tryAutoExtractToken(jsonResponse);
-      } catch (e) {
-        return (
-          false,
-          "An unexpected error occurred: ${e.toString()}",
-          null,
-          null,
-          null,
-        );
+      final contentType = response.headers['content-type'];
+      if (contentType != null && contentType.contains('application/json')) {
+        try {
+          final dynamic jsonResponse = jsonDecode(response.body);
+          formattedResponse = const JsonEncoder.withIndent(
+            '  ',
+          ).convert(jsonResponse);
+          _tryAutoExtractToken(jsonResponse);
+        } catch (e) {
+          formattedResponse = response.body;
+        }
+      } else {
+        formattedResponse = response.body;
       }
+
       return (
         true,
         null,
@@ -192,7 +171,7 @@ class MainWindowViewModel {
         }
       }
     } catch (e) {
-      // Silently fail - not all responses will have tokens
+      // sadness
     }
   }
 
