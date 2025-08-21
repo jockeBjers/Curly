@@ -128,6 +128,9 @@ class MainWindowViewModel {
           response = await http.delete(uri, headers: headers).timeout(timeout);
           break;
       }
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        clearToken();
+      }
       if (response.statusCode == 404) {
         return (
           false,
