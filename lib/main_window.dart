@@ -32,7 +32,9 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    _loadInitialData();
+    _loadInitialData().then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -43,6 +45,7 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
   }
 
   Future<void> _loadInitialData() async {
+    await _viewModel.initializeHistory();
     final (savedUrl, savedJson) = await _viewModel.loadData();
     if (savedUrl != null && savedUrl.isNotEmpty) {
       _urlController.text = savedUrl;
@@ -116,6 +119,10 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
       final (success, errorMsg, responseBody, statusCode, reasonPhrase) =
           await _sendRequest(url, json);
 
+      if (success) {
+        await _viewModel.addToHistory(url, json);
+      }
+
       if (responseBody != null && responseBody.isNotEmpty) {
         _showResponseDialog(
           responseBody,
@@ -177,6 +184,24 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
     }
   }
 
+  void _navigateUrlHistory(bool goUp) {
+    final historyUrl = _viewModel.navigateUrlHistory(goUp);
+    if (historyUrl != null) {
+      setState(() {
+        _urlController.text = historyUrl;
+      });
+    }
+  }
+
+  void _navigateJsonHistory(bool goUp) {
+    final historyJson = _viewModel.navigateJsonHistory(goUp);
+    if (historyJson != null) {
+      setState(() {
+        _jsonController.text = historyJson;
+      });
+    }
+  }
+
   Widget _buildMethodButton(HttpMethod method) {
     return MethodButton(
       method: method,
@@ -189,64 +214,139 @@ class _MainWindowState extends State<MainWindow> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildUrlField() {
-    return TextFormField(
-      controller: _urlController,
-      style: const TextStyle(color: Colors.white),
-      cursorColor: Colors.white,
-      selectionControls: materialTextSelectionControls,
-      decoration: InputDecoration(
-        labelText: 'URL',
-        labelStyle: const TextStyle(color: Colors.white70),
-        hintText: 'https://api.example.com/endpoint',
-        hintStyle: const TextStyle(color: Colors.white38),
-        filled: true,
-        fillColor: Colors.transparent,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(1),
-          borderSide: BorderSide(color: Colors.white30, width: 0.5),
+  Widget _buildHistoryArrows({
+    required bool hasHistory,
+    required VoidCallback onUpPressed,
+    required VoidCallback onDownPressed,
+    bool isJsonField = false,
+  }) {
+    if (!hasHistory) return const SizedBox.shrink();
+
+    return Align(
+      alignment: Alignment.topRight,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(4),
         ),
-        alignLabelWithHint: true,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 30,
+              height: 23,
+              child: IconButton(
+                icon: const Icon(Icons.keyboard_arrow_up, size: 22),
+                onPressed: onUpPressed,
+                padding: EdgeInsets.zero,
+                style: IconButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                  foregroundColor: Colors.white70,
+                  backgroundColor: Colors.transparent,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 30,
+              height: 24,
+              child: IconButton(
+                icon: const Icon(Icons.keyboard_arrow_down, size: 22),
+                onPressed: onDownPressed,
+                padding: EdgeInsets.zero,
+                style: IconButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                  foregroundColor: Colors.white70,
+                  backgroundColor: Colors.transparent,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      onChanged: (value) async {
-        setState(() {});
-        await _viewModel.saveData(
-          url: _urlController.text,
-          json: _jsonController.text,
-        );
-      },
+    );
+  }
+
+  Widget _buildUrlField() {
+    return Stack(
+      children: [
+        TextFormField(
+          controller: _urlController,
+          style: const TextStyle(color: Colors.white),
+          cursorColor: Colors.white,
+          selectionControls: materialTextSelectionControls,
+          decoration: InputDecoration(
+            labelText: 'URL',
+            labelStyle: const TextStyle(color: Colors.white70),
+            hintText: 'https://api.example.com/endpoint',
+            hintStyle: const TextStyle(color: Colors.white38),
+            filled: true,
+            fillColor: Colors.transparent,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(1),
+              borderSide: BorderSide(color: Colors.white30, width: 0.5),
+            ),
+            alignLabelWithHint: true,
+          ),
+          onChanged: (value) async {
+            setState(() {});
+            await _viewModel.saveData(
+              url: _urlController.text,
+              json: _jsonController.text,
+            );
+          },
+        ),
+        _buildHistoryArrows(
+          hasHistory: _viewModel.hasUrlHistory,
+          onUpPressed: () => _navigateUrlHistory(true),
+          onDownPressed: () => _navigateUrlHistory(false),
+        ),
+      ],
     );
   }
 
   Widget _buildJsonField() {
     return Expanded(
-      child: TextFormField(
-        controller: _jsonController,
-        maxLines: null,
-        expands: true,
-        textAlignVertical: TextAlignVertical.top,
-        style: const TextStyle(color: AppTheme.mainColor, fontSize: 14),
-        cursorColor: Colors.white,
-        selectionControls: materialTextSelectionControls,
-        decoration: InputDecoration(
-          labelText: 'JSON Body',
-          labelStyle: const TextStyle(color: Colors.white70),
-          hintText: '{\n  "key": "value"\n}',
-          hintStyle: const TextStyle(color: Colors.white38),
-          filled: true,
-          fillColor: Colors.transparent,
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(1),
-            borderSide: BorderSide(color: Colors.white30, width: 0.5),
+      child: Stack(
+        children: [
+          TextFormField(
+            controller: _jsonController,
+            maxLines: null,
+            expands: true,
+            textAlignVertical: TextAlignVertical.top,
+            style: const TextStyle(color: AppTheme.mainColor, fontSize: 14),
+            cursorColor: Colors.white,
+            selectionControls: materialTextSelectionControls,
+            decoration: InputDecoration(
+              labelText: 'JSON Body',
+              labelStyle: const TextStyle(color: Colors.white70),
+              hintText: '{\n  "key": "value"\n}',
+              hintStyle: const TextStyle(color: Colors.white38),
+              filled: true,
+              fillColor: Colors.transparent,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(1),
+                borderSide: BorderSide(color: Colors.white30, width: 0.5),
+              ),
+              alignLabelWithHint: true,
+            ),
+            onChanged: (value) async {
+              await _viewModel.saveData(
+                url: _urlController.text,
+                json: _jsonController.text,
+              );
+            },
           ),
-          alignLabelWithHint: true,
-        ),
-        onChanged: (value) async {
-          await _viewModel.saveData(
-            url: _urlController.text,
-            json: _jsonController.text,
-          );
-        },
+          _buildHistoryArrows(
+            hasHistory: _viewModel.hasJsonHistory,
+            onUpPressed: () => _navigateJsonHistory(true),
+            onDownPressed: () => _navigateJsonHistory(false),
+            isJsonField: true,
+          ),
+        ],
       ),
     );
   }

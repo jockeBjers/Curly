@@ -47,6 +47,20 @@ class MainWindowViewModel {
 
   final Duration timeout;
 
+  static const int _maxHistoryItems = 5;
+  List<String> _urlHistory = [];
+  List<String> _jsonHistory = [];
+  int _currentUrlIndex = 0;
+  int _currentJsonIndex = 0;
+
+  // for navigation
+  bool get hasUrlHistory => _urlHistory.isNotEmpty;
+  bool get hasJsonHistory => _jsonHistory.isNotEmpty;
+  int get urlHistoryCount => _urlHistory.length;
+  int get jsonHistoryCount => _jsonHistory.length;
+  int get currentUrlHistoryIndex => _currentUrlIndex + 1;
+  int get currentJsonHistoryIndex => _currentJsonIndex + 1;
+
   MainWindowViewModel({this.timeout = const Duration(seconds: 5)});
 
   void setToken(String token) {
@@ -192,6 +206,68 @@ class MainWindowViewModel {
   Future<void> clearData() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+  }
+
+  Future<void> _loadHistory() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    _urlHistory = prefs.getStringList("urlHistory") ?? [];
+    _jsonHistory = prefs.getStringList("jsonHistory") ?? [];
+  }
+
+  Future<void> _saveHistory() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList("urlHistory", _urlHistory);
+    await prefs.setStringList("jsonHistory", _jsonHistory);
+  }
+
+  Future<void> initializeHistory() async {
+    await _loadHistory();
+  }
+
+  Future<void> addToHistory(String? url, String? json) async {
+    await _loadHistory();
+    if (url != null && url.isNotEmpty) {
+      _urlHistory.remove(url);
+      _urlHistory.insert(0, url);
+      if (_urlHistory.length > _maxHistoryItems) {
+        _urlHistory = _urlHistory.take(_maxHistoryItems).toList();
+      }
+      _currentUrlIndex = 0;
+    }
+    if (json != null && json.isNotEmpty) {
+      _jsonHistory.remove(json);
+      _jsonHistory.insert(0, json);
+      if (_jsonHistory.length > _maxHistoryItems) {
+        _jsonHistory = _jsonHistory.take(_maxHistoryItems).toList();
+      }
+      _currentJsonIndex = 0;
+    }
+
+    await _saveHistory();
+  }
+
+  String? navigateUrlHistory(bool goUp) {
+    if (_urlHistory.isEmpty) return null;
+
+    if (goUp) {
+      _currentUrlIndex =
+          (_currentUrlIndex - 1 + _urlHistory.length) % _urlHistory.length;
+    } else {
+      _currentUrlIndex = (_currentUrlIndex + 1) % _urlHistory.length;
+    }
+    return _urlHistory[_currentUrlIndex];
+  }
+
+  String? navigateJsonHistory(bool goUp) {
+    if (_jsonHistory.isEmpty) return null;
+
+    if (goUp) {
+      _currentJsonIndex =
+          (_currentJsonIndex - 1 + _jsonHistory.length) % _jsonHistory.length;
+    } else {
+      _currentJsonIndex = (_currentJsonIndex + 1) % _jsonHistory.length;
+    }
+    return _jsonHistory[_currentJsonIndex];
   }
 
   FormValidation validateInputs(String url, String json, HttpMethod method) {
